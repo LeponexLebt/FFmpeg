@@ -2224,6 +2224,7 @@ static int nvenc_set_timestamp(AVCodecContext *avctx,
     pkt->pts = params->outputTimeStamp;
 
     if (avctx->codec_descriptor->props & AV_CODEC_PROP_REORDER) {
+<<<<<<< HEAD
 FF_DISABLE_DEPRECATION_WARNINGS
         pkt->dts = timestamp_queue_dequeue(ctx->timestamp_list) -
 #if FF_API_TICKS_PER_FRAME
@@ -2231,6 +2232,9 @@ FF_DISABLE_DEPRECATION_WARNINGS
 #endif
             FFMAX(ctx->encode_config.frameIntervalP - 1, 0);
 FF_ENABLE_DEPRECATION_WARNINGS
+=======
+        pkt->dts = dts - FFMAX(ctx->encode_config.frameIntervalP - 1, 0) * FFMAX(avctx->ticks_per_frame, 1);
+>>>>>>> cb3453eb25 (Revert "avcodec/nvenc: fix b-frame DTS behavior with fractional framerates")
     } else {
         pkt->dts = pkt->pts;
     }
