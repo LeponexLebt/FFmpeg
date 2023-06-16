@@ -1762,10 +1762,13 @@ static av_cold int nvenc_setup_surfaces(AVCodecContext *avctx)
     if (!ctx->surfaces)
         return AVERROR(ENOMEM);
 
+<<<<<<< HEAD
     ctx->frame_data_array = av_calloc(ctx->frame_data_array_nb, sizeof(*ctx->frame_data_array));
     if (!ctx->frame_data_array)
         return AVERROR(ENOMEM);
 
+=======
+>>>>>>> d341895a08 (Revert "lavc/nvenc: handle frame durations and AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE")
     ctx->timestamp_list = av_fifo_alloc2(ctx->nb_surfaces, sizeof(int64_t), 0);
     if (!ctx->timestamp_list)
         return AVERROR(ENOMEM);
@@ -2225,6 +2228,7 @@ static int nvenc_set_timestamp(AVCodecContext *avctx,
 
     if (avctx->codec_descriptor->props & AV_CODEC_PROP_REORDER) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 FF_DISABLE_DEPRECATION_WARNINGS
         pkt->dts = timestamp_queue_dequeue(ctx->timestamp_list) -
 #if FF_API_TICKS_PER_FRAME
@@ -2235,6 +2239,10 @@ FF_ENABLE_DEPRECATION_WARNINGS
 =======
         pkt->dts = dts - FFMAX(ctx->encode_config.frameIntervalP - 1, 0) * FFMAX(avctx->ticks_per_frame, 1);
 >>>>>>> cb3453eb25 (Revert "avcodec/nvenc: fix b-frame DTS behavior with fractional framerates")
+=======
+        pkt->dts = timestamp_queue_dequeue(ctx->timestamp_list) -
+            FFMAX(ctx->encode_config.frameIntervalP - 1, 0) * FFMAX(avctx->ticks_per_frame, 1);
+>>>>>>> d341895a08 (Revert "lavc/nvenc: handle frame durations and AV_CODEC_CAP_ENCODER_REORDERED_OPAQUE")
     } else {
         pkt->dts = pkt->pts;
     }
