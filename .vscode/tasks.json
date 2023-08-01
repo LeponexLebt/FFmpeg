@@ -3,6 +3,7 @@
 	"tasks": [
 		{
 			"type": "cmake",
+<<<<<<< HEAD
 			"label": "CMake: clean rebuild",
 			"command": "cleanRebuild",
 			"targets": [
@@ -14,6 +15,16 @@
 			},
 			"problemMatcher": [],
 			"detail": "CMake template clean rebuild task"
+=======
+			"label": "CMake: build",
+			"command": "build",
+			"targets": [
+				"[N/A - Select Kit]"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"detail": "CMake template build task"
+>>>>>>> 78530718e12bb18ccb33304baafd83f87dc92a06
 		}
 	]
 }
