@@ -1035,6 +1035,7 @@ static DemuxStream *demux_stream_alloc(Demuxer *d, AVStream *st)
     if (!ds)
         return NULL;
 
+<<<<<<< HEAD
     ds->ist.st         = st;
     ds->ist.file_index = f->index;
     ds->ist.index      = st->index;
@@ -1092,6 +1093,18 @@ static int ist_add(const OptionsContext *o, Demuxer *d, AVStream *st)
             uint8_t buf[4] = { 0 };
             memcpy(buf, codec_tag, FFMIN(sizeof(buf), strlen(codec_tag)));
             tag = AV_RL32(buf);
+=======
+        MATCH_PER_STREAM_OPT(codec_tags, str, codec_tag, ic, st);
+        if (codec_tag) {
+            uint32_t tag = strtol(codec_tag, &next, 0);
+            if (*next) {
+                uint8_t buf[4] = { 0 };
+                memcpy(buf, codec_tag, FFMIN(sizeof(buf), strlen(codec_tag)));
+                tag = AV_RL32(buf);
+            }
+
+            st->codecpar->codec_tag = tag;
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
         }
 
         st->codecpar->codec_tag = tag;

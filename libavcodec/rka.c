@@ -732,13 +732,22 @@ static int decode_filter(RKAContext *s, ChContext *ctx, ACoder *ac, int off, uns
                 if (bits == 0) {
                     ctx->buf1[off] = sum + val;
                 } else {
+<<<<<<< HEAD
                     ctx->buf1[off] = (val + (sum >> bits)) * (1U << bits) +
+=======
+                    ctx->buf1[off] = (val + (sum >> bits)) * (1 << bits) +
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
                         (((1U << bits) - 1U) & ctx->buf1[off + -1]);
                 }
                 ctx->buf0[off] = ctx->buf1[off] + (unsigned)ctx->buf0[off + -1];
             } else {
+<<<<<<< HEAD
                 val *= 1U << ctx->cmode;
                 sum += ctx->buf0[off + -1] + (unsigned)val;
+=======
+                val *= 1 << ctx->cmode;
+                sum += ctx->buf0[off + -1] + val;
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
                 switch (s->bps) {
                 case 16: sum = av_clip_int16(sum); break;
                 case  8: sum = av_clip_int8(sum);  break;

@@ -425,6 +425,50 @@ static const VulkanOptExtension optional_device_exts[] = {
     { "VK_MESA_video_decode_av1",                             FF_VK_EXT_VIDEO_DECODE_AV1       },
 };
 
+<<<<<<< HEAD
+=======
+/* Converts return values to strings */
+static const char *vk_ret2str(VkResult res)
+{
+#define CASE(VAL) case VAL: return #VAL
+    switch (res) {
+    CASE(VK_SUCCESS);
+    CASE(VK_NOT_READY);
+    CASE(VK_TIMEOUT);
+    CASE(VK_EVENT_SET);
+    CASE(VK_EVENT_RESET);
+    CASE(VK_INCOMPLETE);
+    CASE(VK_ERROR_OUT_OF_HOST_MEMORY);
+    CASE(VK_ERROR_OUT_OF_DEVICE_MEMORY);
+    CASE(VK_ERROR_INITIALIZATION_FAILED);
+    CASE(VK_ERROR_DEVICE_LOST);
+    CASE(VK_ERROR_MEMORY_MAP_FAILED);
+    CASE(VK_ERROR_LAYER_NOT_PRESENT);
+    CASE(VK_ERROR_EXTENSION_NOT_PRESENT);
+    CASE(VK_ERROR_FEATURE_NOT_PRESENT);
+    CASE(VK_ERROR_INCOMPATIBLE_DRIVER);
+    CASE(VK_ERROR_TOO_MANY_OBJECTS);
+    CASE(VK_ERROR_FORMAT_NOT_SUPPORTED);
+    CASE(VK_ERROR_FRAGMENTED_POOL);
+    CASE(VK_ERROR_SURFACE_LOST_KHR);
+    CASE(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR);
+    CASE(VK_SUBOPTIMAL_KHR);
+    CASE(VK_ERROR_OUT_OF_DATE_KHR);
+    CASE(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR);
+    CASE(VK_ERROR_VALIDATION_FAILED_EXT);
+    CASE(VK_ERROR_INVALID_SHADER_NV);
+    CASE(VK_ERROR_OUT_OF_POOL_MEMORY);
+    CASE(VK_ERROR_INVALID_EXTERNAL_HANDLE);
+    CASE(VK_ERROR_NOT_PERMITTED_EXT);
+    CASE(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
+    CASE(VK_ERROR_INVALID_DEVICE_ADDRESS_EXT);
+    CASE(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT);
+    default: return "Unknown error";
+    }
+#undef CASE
+}
+
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
 static VkBool32 VKAPI_CALL vk_dbg_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
                                            VkDebugUtilsMessageTypeFlagsEXT messageType,
                                            const VkDebugUtilsMessengerCallbackDataEXT *data,
@@ -1151,6 +1195,236 @@ static int setup_queue_families(AVHWDeviceContext *ctx, VkDeviceCreateInfo *cd)
     return 0;
 }
 
+<<<<<<< HEAD
+=======
+static int create_exec_ctx(AVHWFramesContext *hwfc, VulkanExecCtx *cmd,
+                           int queue_family_index, int num_queues)
+{
+    VkResult ret;
+    AVVulkanDeviceContext *hwctx = hwfc->device_ctx->hwctx;
+    VulkanDevicePriv *p = hwfc->device_ctx->internal->priv;
+    FFVulkanFunctions *vk = &p->vkfn;
+
+    VkCommandPoolCreateInfo cqueue_create = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags              = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex   = queue_family_index,
+    };
+    VkCommandBufferAllocateInfo cbuf_create = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = num_queues,
+    };
+
+    cmd->nb_queues = num_queues;
+
+    /* Create command pool */
+    ret = vk->CreateCommandPool(hwctx->act_dev, &cqueue_create,
+                                hwctx->alloc, &cmd->pool);
+    if (ret != VK_SUCCESS) {
+        av_log(hwfc, AV_LOG_ERROR, "Command pool creation failure: %s\n",
+               vk_ret2str(ret));
+        return AVERROR_EXTERNAL;
+    }
+
+    cmd->bufs = av_mallocz(num_queues * sizeof(*cmd->bufs));
+    if (!cmd->bufs)
+        return AVERROR(ENOMEM);
+
+    cbuf_create.commandPool = cmd->pool;
+
+    /* Allocate command buffer */
+    ret = vk->AllocateCommandBuffers(hwctx->act_dev, &cbuf_create, cmd->bufs);
+    if (ret != VK_SUCCESS) {
+        av_log(hwfc, AV_LOG_ERROR, "Command buffer alloc failure: %s\n",
+               vk_ret2str(ret));
+        av_freep(&cmd->bufs);
+        return AVERROR_EXTERNAL;
+    }
+
+    cmd->queues = av_mallocz(num_queues * sizeof(*cmd->queues));
+    if (!cmd->queues)
+        return AVERROR(ENOMEM);
+
+    for (int i = 0; i < num_queues; i++) {
+        VulkanQueueCtx *q = &cmd->queues[i];
+        vk->GetDeviceQueue(hwctx->act_dev, queue_family_index, i, &q->queue);
+        q->was_synchronous = 1;
+    }
+
+    return 0;
+}
+
+static void free_exec_ctx(AVHWFramesContext *hwfc, VulkanExecCtx *cmd)
+{
+    AVVulkanDeviceContext *hwctx = hwfc->device_ctx->hwctx;
+    VulkanDevicePriv *p = hwfc->device_ctx->internal->priv;
+    FFVulkanFunctions *vk = &p->vkfn;
+
+    if (cmd->queues) {
+        for (int i = 0; i < cmd->nb_queues; i++) {
+            VulkanQueueCtx *q = &cmd->queues[i];
+
+            /* Make sure all queues have finished executing */
+            if (q->fence && !q->was_synchronous) {
+                vk->WaitForFences(hwctx->act_dev, 1, &q->fence, VK_TRUE, UINT64_MAX);
+                vk->ResetFences(hwctx->act_dev, 1, &q->fence);
+            }
+
+            /* Free the fence */
+            if (q->fence)
+                vk->DestroyFence(hwctx->act_dev, q->fence, hwctx->alloc);
+
+            /* Free buffer dependencies */
+            for (int j = 0; j < q->nb_buf_deps; j++)
+                av_buffer_unref(&q->buf_deps[j]);
+            av_free(q->buf_deps);
+        }
+    }
+
+    if (cmd->bufs)
+        vk->FreeCommandBuffers(hwctx->act_dev, cmd->pool, cmd->nb_queues, cmd->bufs);
+    if (cmd->pool)
+        vk->DestroyCommandPool(hwctx->act_dev, cmd->pool, hwctx->alloc);
+
+    av_freep(&cmd->queues);
+    av_freep(&cmd->bufs);
+    cmd->pool = VK_NULL_HANDLE;
+}
+
+static VkCommandBuffer get_buf_exec_ctx(AVHWFramesContext *hwfc, VulkanExecCtx *cmd)
+{
+    return cmd->bufs[cmd->cur_queue_idx];
+}
+
+static void unref_exec_ctx_deps(AVHWFramesContext *hwfc, VulkanExecCtx *cmd)
+{
+    VulkanQueueCtx *q = &cmd->queues[cmd->cur_queue_idx];
+
+    for (int j = 0; j < q->nb_buf_deps; j++)
+        av_buffer_unref(&q->buf_deps[j]);
+    q->nb_buf_deps = 0;
+}
+
+static int wait_start_exec_ctx(AVHWFramesContext *hwfc, VulkanExecCtx *cmd)
+{
+    VkResult ret;
+    AVVulkanDeviceContext *hwctx = hwfc->device_ctx->hwctx;
+    VulkanQueueCtx *q = &cmd->queues[cmd->cur_queue_idx];
+    VulkanDevicePriv *p = hwfc->device_ctx->internal->priv;
+    FFVulkanFunctions *vk = &p->vkfn;
+
+    VkCommandBufferBeginInfo cmd_start = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    /* Create the fence and don't wait for it initially */
+    if (!q->fence) {
+        VkFenceCreateInfo fence_spawn = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        };
+        ret = vk->CreateFence(hwctx->act_dev, &fence_spawn, hwctx->alloc,
+                              &q->fence);
+        if (ret != VK_SUCCESS) {
+            av_log(hwfc, AV_LOG_ERROR, "Failed to queue frame fence: %s\n",
+                   vk_ret2str(ret));
+            return AVERROR_EXTERNAL;
+        }
+    } else if (!q->was_synchronous) {
+        vk->WaitForFences(hwctx->act_dev, 1, &q->fence, VK_TRUE, UINT64_MAX);
+        vk->ResetFences(hwctx->act_dev, 1, &q->fence);
+    }
+
+    /* Discard queue dependencies */
+    unref_exec_ctx_deps(hwfc, cmd);
+
+    ret = vk->BeginCommandBuffer(cmd->bufs[cmd->cur_queue_idx], &cmd_start);
+    if (ret != VK_SUCCESS) {
+        av_log(hwfc, AV_LOG_ERROR, "Unable to init command buffer: %s\n",
+               vk_ret2str(ret));
+        return AVERROR_EXTERNAL;
+    }
+
+    return 0;
+}
+
+static int add_buf_dep_exec_ctx(AVHWFramesContext *hwfc, VulkanExecCtx *cmd,
+                                AVBufferRef * const *deps, int nb_deps)
+{
+    AVBufferRef **dst;
+    VulkanQueueCtx *q = &cmd->queues[cmd->cur_queue_idx];
+
+    if (!deps || !nb_deps)
+        return 0;
+
+    dst = av_fast_realloc(q->buf_deps, &q->buf_deps_alloc_size,
+                          (q->nb_buf_deps + nb_deps) * sizeof(*dst));
+    if (!dst)
+        goto err;
+
+    q->buf_deps = dst;
+
+    for (int i = 0; i < nb_deps; i++) {
+        q->buf_deps[q->nb_buf_deps] = av_buffer_ref(deps[i]);
+        if (!q->buf_deps[q->nb_buf_deps])
+            goto err;
+        q->nb_buf_deps++;
+    }
+
+    return 0;
+
+err:
+    unref_exec_ctx_deps(hwfc, cmd);
+    return AVERROR(ENOMEM);
+}
+
+static int submit_exec_ctx(AVHWFramesContext *hwfc, VulkanExecCtx *cmd,
+                           VkSubmitInfo *s_info, AVVkFrame *f, int synchronous)
+{
+    VkResult ret;
+    VulkanQueueCtx *q = &cmd->queues[cmd->cur_queue_idx];
+    VulkanDevicePriv *p = hwfc->device_ctx->internal->priv;
+    FFVulkanFunctions *vk = &p->vkfn;
+
+    ret = vk->EndCommandBuffer(cmd->bufs[cmd->cur_queue_idx]);
+    if (ret != VK_SUCCESS) {
+        av_log(hwfc, AV_LOG_ERROR, "Unable to finish command buffer: %s\n",
+               vk_ret2str(ret));
+        unref_exec_ctx_deps(hwfc, cmd);
+        return AVERROR_EXTERNAL;
+    }
+
+    s_info->pCommandBuffers = &cmd->bufs[cmd->cur_queue_idx];
+    s_info->commandBufferCount = 1;
+
+    ret = vk->QueueSubmit(q->queue, 1, s_info, q->fence);
+    if (ret != VK_SUCCESS) {
+        av_log(hwfc, AV_LOG_ERROR, "Queue submission failure: %s\n",
+               vk_ret2str(ret));
+        unref_exec_ctx_deps(hwfc, cmd);
+        return AVERROR_EXTERNAL;
+    }
+
+    if (f)
+        for (int i = 0; i < s_info->signalSemaphoreCount; i++)
+            f->sem_value[i]++;
+
+    q->was_synchronous = synchronous;
+
+    if (synchronous) {
+        AVVulkanDeviceContext *hwctx = hwfc->device_ctx->hwctx;
+        vk->WaitForFences(hwctx->act_dev, 1, &q->fence, VK_TRUE, UINT64_MAX);
+        vk->ResetFences(hwctx->act_dev, 1, &q->fence);
+        unref_exec_ctx_deps(hwfc, cmd);
+    } else { /* Rotate queues */
+        cmd->cur_queue_idx = (cmd->cur_queue_idx + 1) % cmd->nb_queues;
+    }
+
+    return 0;
+}
+
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
 static void vulkan_device_free(AVHWDeviceContext *ctx)
 {
     VulkanDevicePriv *p = ctx->internal->priv;

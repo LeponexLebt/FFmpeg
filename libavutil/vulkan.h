@@ -140,8 +140,27 @@ typedef struct FFVulkanPipeline {
     VkPushConstantRange *push_consts;
     int push_consts_num;
 
+<<<<<<< HEAD
     /* Workgroup */
     int wg_size[3];
+=======
+    /* Descriptors */
+    VkDescriptorSetLayout         *desc_layout;
+    VkDescriptorPool               desc_pool;
+    VkDescriptorSet               *desc_set;
+#if VK_USE_64_BIT_PTR_DEFINES == 1
+    void                         **desc_staging;
+#else
+    uint64_t                      *desc_staging;
+#endif
+    VkDescriptorSetLayoutBinding **desc_binding;
+    VkDescriptorUpdateTemplate    *desc_template;
+    int                           *desc_set_initialized;
+    int                            desc_layout_num;
+    int                            descriptor_sets_num;
+    int                            total_descriptor_sets;
+    int                            pool_size_desc_num;
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
 
     /* Descriptors */
     FFVulkanDescriptorSet *desc_set;

@@ -172,7 +172,10 @@ static int extract_packet_props(AVCodecInternal *avci, const AVPacket *pkt)
 #if FF_API_FRAME_PKT
         if (!ret)
             avci->last_pkt_props->stream_index = pkt->size; // Needed for ff_decode_frame_props().
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
     }
     return ret;
 }
@@ -495,7 +498,10 @@ FF_ENABLE_DEPRECATION_WARNINGS
 #if FF_API_FRAME_PKT
             // See extract_packet_props() comment.
             avci->last_pkt_props->stream_index = avci->last_pkt_props->stream_index - consumed;
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
             avci->last_pkt_props->pts = AV_NOPTS_VALUE;
             avci->last_pkt_props->dts = AV_NOPTS_VALUE;
         }
@@ -1478,11 +1484,15 @@ int ff_decode_frame_props(AVCodecContext *avctx, AVFrame *frame)
         ret = ff_decode_frame_props_from_pkt(avctx, frame, pkt);
         if (ret < 0)
             return ret;
+<<<<<<< HEAD
 #if FF_API_FRAME_PKT
 FF_DISABLE_DEPRECATION_WARNINGS
         frame->pkt_size = pkt->stream_index;
 FF_ENABLE_DEPRECATION_WARNINGS
 #endif
+=======
+        frame->pkt_size = pkt->stream_index;
+>>>>>>> d4a7a6e7fa18be96f97f9f316c632b8e93118ed8
     }
 #if FF_API_REORDERED_OPAQUE
 FF_DISABLE_DEPRECATION_WARNINGS
